@@ -1,40 +1,56 @@
-from tools import Pos
+from gameLogic import Point, GameEvent, Ship, GameBoard, GameLogicSeaBattle
 
 
-class Ship:
-    def __init__(self, *points):
-        self.__body = []
-        self.__size = 0
-        for pos in points:
-            self.__body.append(pos)
-            self.__size += 1
+# -----------------------------------------
+class ConsoleGameGui:
+    def __init__(self, board_size, logic) -> None:
+        self.board_size = board_size
+        self.logic = logic
 
-    def __str__(self):
-        return f"The Ship is {self.__size} size"
+    def get_event(self) -> GameEvent:
+        while True:
+            yield GameEvent(GameEvent.Event_Tick, None)
 
-class GameBoard:
-    def __init__(self, *ships):
-        self.__ships = []
-        self.__ships_alive = 0
-        for ship in ships:
-            self.__ships.append(ship)
-            self.__ships_alive += 1
+            str_ = input("Введите координаты (X Y), куда вы хотите выстрелить, разделенные пробелом (q для выхода): ")
 
-    @property
-    def ships_alive(self):
-        return self.__ships_alive
+            if str_ == '':
+                print("Все-таки введите что-нибудь...")
+                continue
+
+            if str_[0] == 'q':
+                print("Bye-bye!")
+                yield GameEvent(GameEvent.Event_Quit, None)
+                break
+
+            x, y = map(int, str_.split())
+            print(f"Вы ввели {x}, {y}")
+            yield GameEvent(GameEvent.Event_Hit, Point(x, y))
+
+    def process_event(self, event):
+        self.logic.process_event(event)
+
+    def draw(self):
+        marks = self.logic.get_board()
+        for i in range(len(marks)):
+            print(f"{i}. [{marks[i].get_pos().x}, {marks[i].get_pos().y}, {marks[i].get_width()}, {marks[i].get_height()}]")
+
+        score = self.logic.get_score()
+        accuracity = self.logic.get_accuracity()
+        print(f'score:{score}')
+        print(f'accuracity:{accuracity:.0f}%')
+
+    def run(self):
+        for event in self.get_event():
+            if event.type == GameEvent.Event_Quit:
+                break
+            else:
+                self.process_event(event)
+
+            self.draw()
 
 
+# --------------------------------------------
 if __name__ == "__main__":
-    ship_1 = Ship(Pos(1, 1), Pos(1, 2))
-    ship_2 = Ship(Pos(5, 2), Pos(5, 3), Pos(5, 4))
-    ship_3 = Ship(Pos(3,3))
-    ship_4 = Ship(Pos(6, 6), Pos(5, 6))
-
-    print(ship_1)
-    print(ship_2)
-    print(ship_3)
-    print(ship_4)
-
-    game = GameBoard(ship_1, ship_2, ship_3, ship_4)
-    print(f"На поле {game.ships_alive} живых кораблей")
+    board_size = 6
+    gui = ConsoleGameGui(board_size, GameLogicSeaBattle(board_size))
+    gui.run()
