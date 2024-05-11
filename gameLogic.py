@@ -13,6 +13,9 @@ class Point:
     def __str__(self) -> str:
         return f"[x = {self.__x}, y = {self.__y}]"
 
+    def __eq__(self, other) -> bool:
+        return self.x == other.x and self.y == other.y
+
     @property
     def x(self) -> int:
         return self.__x
@@ -28,27 +31,6 @@ class Point:
     @y.setter
     def y(self, y: int) -> None:
         self.__y = y
-
-
-# ---------------------------------
-# класс внутриигрового сообщения
-class GameEvent:
-    Event_None = 0          # пустое событие
-    Event_Tick = 1          # событие таймера
-    Event_Hit = 2           # событие "выстрела" по цели
-    Event_Quit = 99         # Выход
-
-    def __init__(self, event_type, event_data) -> None:
-        self.__type = event_type
-        self.__data = event_data
-
-    @property
-    def type(self):
-        return self.__type
-
-    @property
-    def data(self):
-        return self.__data
 
 
 # ---------------------------------
@@ -78,9 +60,9 @@ class Ship:
             _xx = _xx + p.x
             _yy = _yy + p.y
 
-        _along_x = _xx / num_of_points == points[0].x
-        _along_y = _yy / num_of_points == points[0].y
-        if (_along_x and not _along_y) or (_along_y and not _along_x):
+        _vertical = _xx / num_of_points == points[0].x
+        _horizontal = _yy / num_of_points == points[0].y
+        if (_vertical and not _horizontal) or (_horizontal and not _vertical):
             return True
         else:
             return False
@@ -103,10 +85,14 @@ class Ship:
 # ---------------------------------
 # класс игрового поля
 class SeaBattleGameBoard:
+    Ship_Body = 1
+    Sea_Spot = 0
+    Fog_Of_War = -1
+
     def __init__(self, size: int, ships: list[Ship]) -> None:
         self.__board_size = size
-        self.__board = [['◦' for x in range(self.__board_size)] for y in range(self.__board_size)]
-        self.__enemy_shoots = [['O' for x in range(self.__board_size)] for y in range(self.__board_size)]
+        self.__board = [[SeaBattleGameBoard.Sea_Spot for x in range(self.__board_size)] for y in range(self.__board_size)]
+        self.__enemy_shoots = [[SeaBattleGameBoard.Fog_Of_War for x in range(self.__board_size)] for y in range(self.__board_size)]
         self.__ships = []
         self.__alive_ships_count = 0
         for ship in ships:
@@ -116,7 +102,7 @@ class SeaBattleGameBoard:
     # Перед добавлением корабля делает следующие проверки:
     #   - длина корабля должна быть 1, 2 или 3
     #   - корабль должен располагаться внутри поля
-    #   - ToDo: растояние от имеющихся кораблей должно составлять минимум одну клетку
+    #   - ToDo: расстояние от имеющихся кораблей должно составлять минимум одну клетку
     def add_ship(self, ship: Ship) -> bool:
         ret = True
         if ship.size not in [1, 2, 3]:
@@ -129,7 +115,7 @@ class SeaBattleGameBoard:
                 return False
 
         for p in ship.body:
-            self.__board[p.x - 1][p.y - 1] = '■'
+            self.__board[p.x - 1][p.y - 1] = SeaBattleGameBoard.Ship_Body
         self.__ships.append(ship)
         self.__alive_ships_count += 1
 
@@ -145,7 +131,7 @@ class SeaBattleGameBoard:
     def alive_ships_count(self):
         return self.__alive_ships_count
 
-    def draw(self):
+    def _draw(self):
         # Вывод заголовка с номерами столбцов
         print()
         row = ' '
@@ -160,19 +146,44 @@ class SeaBattleGameBoard:
         for y in range(self.__board_size):
             row = str(y + 1)
             for x in range(self.__board_size):
-                row = row + ' ' + self.__enemy_shoots[x][y]
+                row = row + ' ' + str(self.__enemy_shoots[x][y])
             row = row + '     ' + str(y + 1)
             for x in range(self.__board_size):
-                row = row + ' ' + self.__board[x][y]
+                row = row + ' ' + str(self.__board[x][y])
             print(row)
+
+
+# ---------------------------------
+# класс внутриигрового сообщения
+class GameEvent:
+    Event_None = 0          # пустое событие
+    Event_Tick = 1          # событие таймера
+    Event_Hit = 2           # событие "выстрела" по цели
+    Event_Quit = 99         # Выход
+
+    def __init__(self, event_type, event_data) -> None:
+        self.__type = event_type
+        self.__data = event_data
+
+    @property
+    def type(self):
+        return self.__type
+
+    @property
+    def data(self):
+        return self.__data
+
 
 # ---------------------------------
 # класс логики игры "Морской бой"
 class SeaBattleGameLogic:
-    def __init__(self, board_size) -> None:
-        self.__board_size = board_size
+    def __init__(self, size: int) -> None:
+        self.__board_size = size
         self.__user_board = SeaBattleGameBoard()
         self.__comp_board = SeaBattleGameBoard()
+
+    def get_user_board(self):
+        return self.__user_board
 
     def process_event(self, event):
         pass
@@ -195,6 +206,6 @@ if __name__ == "__main__":
     my_board = SeaBattleGameBoard(board_size, my_ships)
     print(f"На поле {my_board.alive_ships_count} живых кораблей")
 
-    my_board.draw()
+    my_board._draw()
     # print(my_board)
 

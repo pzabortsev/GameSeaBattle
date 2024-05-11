@@ -3,8 +3,11 @@ from gameLogic import Point, GameEvent, Ship, GameBoard, GameLogicSeaBattle
 
 # -----------------------------------------
 class ConsoleGameGui:
-    def __init__(self, board_size, logic) -> None:
-        self.board_size = board_size
+    Ship_Body = '■'
+    Sea_Spot = '.'
+
+    def __init__(self, size, logic) -> None:
+        self.board_size = size
         self.logic = logic
 
     def get_event(self) -> GameEvent:
@@ -30,14 +33,9 @@ class ConsoleGameGui:
         self.logic.process_event(event)
 
     def draw(self):
-        marks = self.logic.get_board()
-        for i in range(len(marks)):
-            print(f"{i}. [{marks[i].get_pos().x}, {marks[i].get_pos().y}, {marks[i].get_width()}, {marks[i].get_height()}]")
+        user_board = self.logic.get_user_board()
 
-        score = self.logic.get_score()
-        accuracity = self.logic.get_accuracity()
-        print(f'score:{score}')
-        print(f'accuracity:{accuracity:.0f}%')
+
 
     def run(self):
         for event in self.get_event():
