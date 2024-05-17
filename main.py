@@ -1,11 +1,9 @@
-from gameLogic import (print_error, Point, GameEvent, SeaBattleGameBoard, SeaBattleGameLogic,
-                       Player, HumanPlayer, ComputerPlayer)
-import random as rnd
+from gameLogic import GameEvent, SeaBattleGameBoard, SeaBattleGameLogic, HumanPlayer, ComputerPlayer
 
 
 # -----------------------------------------
 class ConsoleGameGui:
-    Visual = ['○', '◌', '■', '▪', 'X', '◦']
+    Visual = ['○', '◌', '■', '◦', '▪', 'X']
 
     def __init__(self, size, logic) -> None:
         self.__board_size = size
@@ -14,21 +12,15 @@ class ConsoleGameGui:
     # Генератор потока событий GameEvent для основноего цикла игры
     def get_event(self) -> list[GameEvent]:
         while True:
-            while self.logic.player1.last_shot_success:
-                if self.logic.player1.__class__.__name__ == 'ComputerPlayer':
-                    _ = input(f"Ход компьютера '{self.logic.player1.name}'\nНажмите Enter для продолжения: ")
-                yield self.logic.player1.get_move()
+            for player in [self.logic.player1, self.logic.player2]:
+                while player.last_shot_success:
+                    try:
+                        yield player.get_move()
+                    except KeyboardInterrupt:
+                        yield GameEvent(GameEvent.Event_Quit)
 
-                if self.logic.is_player1_win:
-                    yield GameEvent(GameEvent.Event_Win, self.logic.player1)
-
-            while self.logic.player2.last_shot_success:
-                if self.logic.player2.__class__.__name__ == 'ComputerPlayer':
-                    _ = input(f"Ход компьютера '{self.logic.player2.name}'\nНажмите Enter для продолжения: ")
-                yield self.logic.player2.get_move()
-
-                if self.logic.is_player2_win:
-                    yield GameEvent(GameEvent.Event_Win, self.logic.player2)
+                    if player.is_winner:
+                        yield GameEvent(GameEvent.Event_Win, player)
 
     def process_event(self, event):
         self.logic.process_event(event)
@@ -40,25 +32,35 @@ class ConsoleGameGui:
         print("{:<15}  :  {:>15}".format("Кораблей: " + str(self.logic.player1.board.alive_ships_count),
                                          "Кораблей: " + str(self.logic.player2.board.alive_ships_count)))
         row = ' '
-        for x in range(self.__board_size):
+        for x in range(self.board_size):
             row = row + ' ' + str(x + 1)
         print("{:<15}     {:>15}".format(row, row))
 
         # Построчный вывод на консоль двух полей с номерами строк (координата y) в начале каждой строки
         # Левое поле - поле игрока player1
         # Правое поле - поле игрока player2
-        for y in range(self.__board_size):
+        # ToDo: оптимизировать, упростить
+        for y in range(self.board_size):
             rows = []
             for player in [self.logic.player1, self.logic.player2]:
                 row = str(y + 1)
-                for x in range(self.__board_size):
-                    if player.__class__.__name__ == 'ComputerPlayer':
+                for x in range(self.board_size):
+                    if player.__class__.__name__ == player.enemy.__class__.__name__ == 'HumanPlayer':
                         row = row + ' ' + self.Visual[player.board.enemy_shots[x][y]]
-                    else:
-                        if player.board.enemy_shots[x][y] in [SeaBattleGameBoard.Fog_Of_War, SeaBattleGameBoard.Ship_Neighbor]:
+                    elif player.__class__.__name__ == player.enemy.__class__.__name__ == 'ComputerPlayer':
+                        if (player.board.enemy_shots[x][y] in
+                                [SeaBattleGameBoard.Fog_Of_War, SeaBattleGameBoard.Ship_Neighbor]):
                             row = row + ' ' + self.Visual[player.board.board[x][y]]
                         else:
                             row = row + ' ' + self.Visual[player.board.enemy_shots[x][y]]
+                    elif player.__class__.__name__ == 'HumanPlayer' and player.enemy.__class__.__name__ == 'ComputerPlayer':
+                        if (player.board.enemy_shots[x][y] in
+                                [SeaBattleGameBoard.Fog_Of_War, SeaBattleGameBoard.Ship_Neighbor]):
+                            row = row + ' ' + self.Visual[player.board.board[x][y]]
+                        else:
+                            row = row + ' ' + self.Visual[player.board.enemy_shots[x][y]]
+                    else:
+                        row = row + ' ' + self.Visual[player.board.enemy_shots[x][y]]
                 rows.append(row)
             print("{:<15}     {:>15}".format(rows[0], rows[1]))
 
@@ -69,12 +71,16 @@ class ConsoleGameGui:
                 break
             elif event.type == GameEvent.Event_Win:
                 print()
-                print(f"{event.player.name}, поздравляю!\nВы победили!!!")
+                print(event.player.congrats())
                 break
             else:
                 self.process_event(event)
 
             self.draw()
+
+    @property
+    def board_size(self) -> int:
+        return self.__board_size
 
 
 # --------------------------------------------
